@@ -1,0 +1,175 @@
+/**
+*
+* Useful SOQL queries
+*
+**/
+
+--------------------------------------------------------------------
+--------------------------------------------------------------------
+
+// Queries related to distribution of metadata.
+
+// Active users per profile
+
+SELECT count(id), Profile.name
+FROM User
+WHERE User.IsActive = true
+GROUP BY Profile.name
+
+// Apex classes per namespace
+
+SELECT count(id), NameSpacePrefix 
+FROM ApexClass 
+GROUP BY NameSpacePrefix
+
+
+// Triggers per object
+SELECT TableEnumOrId, Count(Id) num
+FROM ApexTrigger
+WHERE Status = 'Active' and IsValid = true
+GROUP BY TableEnumOrId
+
+// # of active triggers
+SELECT count() FROM ApexTrigger WHERE Status = 'Active' and IsValid = true
+
+// Trigger Details (excluding body)
+SELECT Name, TableEnumOrId, NamespacePrefix, ApiVersion, 
+  Status, IsValid, LengthWithoutComments, 
+  UsageAfterDelete, UsageAfterInsert, UsageAfterUndelete, UsageAfterUpdate, UsageBeforeDelete, UsageBeforeInsert, UsageBeforeUpdate
+FROM ApexTrigger
+
+// VF pages per namespace
+// (Use the Tooling API with this query)
+SELECT count(Id), NamespacePrefix 
+FROM ApexPage 
+GROUP BY NamespacePrefix
+
+
+// Flows. (Cannot use the GROUP BY clause on the FlowDefinition object)
+// (Use the Tooling API with this query)
+SELECT Id, ActiveVersion.MasterLabel, ActiveVersion.VersionNumber, NamespacePrefix 
+FROM FlowDefinition
+
+--------------------------------------------------------------------
+--------------------------------------------------------------------
+
+// Queries related to distribution of object relationships and customization.
+
+// Record Types on an object.
+SELECT Name, Description 
+FROM RecordType 
+WHERE IsActive = true and sObjectType = 'Opportunity'
+
+// Custom fields on an object.
+SELECT QualifiedApiName, DataType, DeveloperName, RelationshipName 
+FROM FieldDefinition 
+WHERE EntityDefinition.DeveloperName='Opportunity' and 
+  RelationshipName = '' and QualifiedApiName like '%__c'
+ORDER BY DataType 
+
+// Custom relationships on an Object.
+SELECT QualifiedApiName, DataType, DeveloperName, RelationshipName 
+FROM FieldDefinition 
+WHERE EntityDefinition.DeveloperName='Opportunity' and 
+  RelationshipName <> '' and QualifiedApiName like '%__c'
+ORDER BY DataType 
+
+// Find inbound standard relationships to an object. (Rather objects that depend on the specified object.)
+SELECT QualifiedApiName, DataType, DeveloperName, RelationshipName, EntityDefinition.DeveloperName 
+FROM FieldDefinition 
+WHERE EntityDefinition.DeveloperName <> '' and
+  RelationshipName <> '' and 
+  DataType = 'Lookup(Opportunity)' and
+  (not QualifiedApiName like '%__c') 
+ORDER BY DataType
+
+// Find inbound custom relationships to an object. (Rather objects that depend on the specified object.)
+SELECT QualifiedApiName, DataType, DeveloperName, RelationshipName, EntityDefinition.DeveloperName 
+FROM FieldDefinition 
+WHERE EntityDefinition.DeveloperName <> '' and
+  RelationshipName <> '' and 
+  DataType = 'Lookup(Opportunity)' and
+  QualifiedApiName like '%__c'
+ORDER BY DataType
+
+--------------------------------------------------------------------
+--------------------------------------------------------------------
+
+// Working with Groups
+// Find the number of groups by type
+SELECT count(id), Type
+FROM Group
+GROUP BY Type
+
+// Find all Lead queues.
+SELECT DeveloperName, Name
+FROM Group
+WHERE Type='Queue' and ID IN ( SELECT QueueId FROM QueueSobject WHERE SobjectType='Lead' )
+ORDER BY Name
+
+--------------------------------------------------------------------
+--------------------------------------------------------------------
+
+// Working with Code
+
+// Find all Installed Managed Packages
+SELECT Id,
+    SubscriberPackage.NamespacePrefix,
+    SubscriberPackage.Name, 
+    SubscriberPackage.Description,
+    SubscriberPackageVersion.Name, SubscriberPackageVersion.MajorVersion,SubscriberPackageVersion.MinorVersion,
+    SubscriberPackageId, 
+    SubscriberPackageVersion.Id,
+    SubscriberPackageVersion.PatchVersion,
+    SubscriberPackageVersion.BuildNumber
+ FROM InstalledSubscriberPackage
+ ORDER BY SubscriberPackage.NamespacePrefix
+
+--------------------------------------------------------------------
+--------------------------------------------------------------------
+
+// Working with Roles
+--Find SF Users Roles (rather than external users)
+SELECT ID, Name, ParentRoleId 
+FROM UserRole
+WHERE PortalType='None'
+
+--------------------------------------------------------------------
+--------------------------------------------------------------------
+
+// Working with Distributions
+
+--Find number of accounts per record type.
+SELECT count(id), RecordType.Name
+FROM Account
+GROUP BY RecordType.Name
+       
+--------------------------------------------------------------------
+--------------------------------------------------------------------
+
+// Working with Reports
+// Find the details about all reports in a known folder.
+// This is useful for finding the Developer names for a package.xml manifest.
+SELECT Name , DeveloperName, NamespacePrefix, FolderName, Description, Format, LastReferencedDate, LastRunDate, LastViewedDate, OwnerId
+FROM report
+WHERE FolderName = 'Example folder'
+             
+// Given a report ID, find its folder.
+// First find the OwnerId of the report.
+SELECT Id, DeveloperName, Name, OwnerId FROM Report WHERE Id = '00Oj0000000JjoZEAS'
+// Then using the OwnerId, find the containing Folder. Have not found a way to use a nested query to do this.
+SELECT Id, DeveloperName, Name FROM Folder WHERE Id = '00lj0000000MDqCAAW'
+
+--------------------------------------------------------------------
+--------------------------------------------------------------------
+
+// Working with Attachements (Classic)
+// Find distribution of Attachment content types
+SELECT ContentType, count(id) 
+FROM attachment
+GROUP BY ContentType  
+           
+// Distribution of Attachments to Objects
+SELECT Parent.Type, count(id) 
+FROM attachment
+GROUP BY Parent.Type
