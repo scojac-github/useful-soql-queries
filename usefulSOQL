@@ -7,6 +7,14 @@
 --------------------------------------------------------------------
 --------------------------------------------------------------------
 
+// Find Duplicate Data with SOQL
+// In the example below, duplicate Contacts.
+
+SELECT Email, COUNT(Id) FROM Contact GROUP BY Email HAVING COUNT(Id) > 1
+
+--------------------------------------------------------------------
+--------------------------------------------------------------------
+
 // Queries related to distribution of metadata.
 
 // Active users per profile
